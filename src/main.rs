@@ -1,3 +1,4 @@
+#![allow(mixed_script_confusables)]
 use std::{
 	cmp::Ordering,
 	io::{self, BufRead, Write},
@@ -52,6 +53,6 @@ fn main() {
 			break;
 		}
 
-		move_ai(&mut board);
+		move_ai(&mut board, Player::X, true);
 	}
 }

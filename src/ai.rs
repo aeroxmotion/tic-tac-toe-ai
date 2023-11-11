@@ -3,51 +3,117 @@ use crate::{
 	player::{Player, PlayerScore},
 };
 
-enum MinimaxMode {
-	Min,
-	Max,
-}
+type HeuristicScore = (usize, PlayerScore);
 
-pub fn move_ai(board: &mut Board) {
+const MAX_DEPTH: usize = 8;
+const LESS_PLAYER_SCORE: HeuristicScore = (0, PlayerScore::Less);
+const GREATER_PLAYER_SCORE: HeuristicScore = (0, PlayerScore::Greater);
+
+pub fn move_ai(board: &mut Board, ai_player: Player, optimized: bool) {
 	if !board.finished() {
-		let (action, _) = minimax(board.clone(), MinimaxMode::Max);
-		board.place_at(action, Player::X).unwrap();
+		let (action, _) = if !optimized {
+			minimax(board.clone(), MAX_DEPTH, ai_player)
+		} else {
+			alphabeta(
+				board.clone(),
+				LESS_PLAYER_SCORE,
+				GREATER_PLAYER_SCORE,
+				MAX_DEPTH,
+				ai_player,
+			)
+		};
+
+		board.place_at(action, ai_player).unwrap();
 	}
 }
 
-fn minimax(board: Board, mode: MinimaxMode) -> (usize, PlayerScore) {
-	if board.finished() {
+// Thanks to: https://en.wikipedia.org/wiki/Alpha%E2%80%93beta_pruning#Pseudocode
+fn alphabeta(
+	board: Board,
+	mut α: HeuristicScore,
+	mut β: HeuristicScore,
+	depth: usize,
+	player: Player,
+) -> HeuristicScore {
+	if depth == 0 || board.finished() {
+		return (0, board.score());
+	}
+
+	match player {
+		Player::X => {
+			let mut score = LESS_PLAYER_SCORE;
+
+			for i in board.empty_positions() {
+				let next_score =
+					alphabeta(result(board.clone(), i, player), α, β, depth - 1, Player::O);
+
+				if next_score.1 >= score.1 {
+					score = (i, next_score.1);
+				}
+
+				if score.1 > β.1 {
+					break;
+				}
+
+				if score.1 >= α.1 {
+					α = score;
+				}
+			}
+
+			return score;
+		}
+		_ => {
+			let mut score = GREATER_PLAYER_SCORE;
+
+			for i in board.empty_positions() {
+				let next_score =
+					alphabeta(result(board.clone(), i, player), α, β, depth - 1, Player::X);
+
+				if next_score.1 <= score.1 {
+					score = (i, next_score.1);
+				}
+
+				if score.1 < α.1 {
+					break;
+				}
+
+				if score.1 <= β.1 {
+					β = score;
+				}
+			}
+
+			return score;
+		}
+	}
+}
+
+fn minimax(board: Board, depth: usize, player: Player) -> HeuristicScore {
+	if depth == 0 || board.finished() {
 		return (0, board.score());
 	}
 
 	let mut score = (
 		0,
-		match mode {
-			MinimaxMode::Min => PlayerScore::Greater,
-			MinimaxMode::Max => PlayerScore::Less,
+		match player {
+			Player::O => PlayerScore::Greater,
+			_ => PlayerScore::Less,
 		},
 	);
 
 	for i in board.empty_positions() {
-		let next_state = result(
-			board.clone(),
-			i,
-			match mode {
-				MinimaxMode::Min => Player::O,
-				MinimaxMode::Max => Player::X,
-			},
-		);
+		let next_state = result(board.clone(), i, player);
 		let next_score = minimax(
 			next_state,
-			match mode {
-				MinimaxMode::Min => MinimaxMode::Max,
-				MinimaxMode::Max => MinimaxMode::Min,
+			depth - 1,
+			match player {
+				Player::O => Player::X,
+				_ => Player::O,
 			},
 		);
 
-		let result = match mode {
-			MinimaxMode::Min => next_score.1 < score.1,
-			MinimaxMode::Max => next_score.1 > score.1,
+		let result = match player {
+			Player::O => next_score.1 <= score.1,
+			_ => next_score.1 >= score.1,
 		};
 
 		if result {
