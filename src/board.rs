@@ -37,6 +37,29 @@ impl ToString for Board {
 
 const TARGET_SCORE: [i32; 2] = [-3, 3];
 
+pub struct EmptyPositionsIter<'a> {
+	curr: usize,
+	state: &'a Vec<Player>,
+}
+
+impl Iterator for EmptyPositionsIter<'_> {
+	type Item = usize;
+
+	fn next(&mut self) -> Option<Self::Item> {
+		let len = self.state.len();
+
+		while self.curr < len {
+			self.curr += 1;
+
+			if self.state[self.curr - 1] == Player::Empty {
+				return Some(self.curr - 1);
+			}
+		}
+
+		None
+	}
+}
+
 impl Board {
 	pub fn place_at(&mut self, index: usize, player: Player) -> Result<(), PlaceError> {
 		let state = &mut self.0;
@@ -53,16 +76,11 @@ impl Board {
 		Ok(())
 	}
 
-	pub fn empty_positions(&self) -> Vec<usize> {
-		let mut positions = vec![];
-
-		for (i, cell) in self.0.iter().enumerate() {
-			if cell == &Player::Empty {
-				positions.push(i);
-			}
+	pub fn empty_positions(&self) -> EmptyPositionsIter<'_> {
+		EmptyPositionsIter {
+			curr: 0,
+			state: &self.0,
 		}
-
-		positions
 	}
 
 	pub fn score(&self) -> PlayerScore {
@@ -124,6 +142,6 @@ impl Board {
 	}
 
 	pub fn finished(&self) -> bool {
-		self.score().is_ne() || self.empty_positions().len() == 0
+		self.score().is_ne() || self.empty_positions().next().is_none()
 	}
 }

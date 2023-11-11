@@ -92,13 +92,10 @@ fn minimax(board: Board, depth: usize, player: Player) -> HeuristicScore {
 		return (0, board.score());
 	}
 
-	let mut score = (
-		0,
-		match player {
-			Player::O => PlayerScore::Greater,
-			_ => PlayerScore::Less,
-		},
-	);
+	let mut score = match player {
+		Player::O => GREATER_PLAYER_SCORE,
+		_ => LESS_PLAYER_SCORE,
+	};
 
 	for i in board.empty_positions() {
 		let next_state = result(board.clone(), i, player);
